@@ -27,6 +27,8 @@ class Experiment:
         self.num_batches_train = self.num_examples_train // self.args.bsize
         self.num_batches_eval = self.num_examples_eval // self.args.bsize
 
+        self.total_ep = self.args.ep - self.args.resume_ep
+
         with tf.device('/cpu:0'):
 
             with tf.name_scope('dataset'):
@@ -34,7 +36,7 @@ class Experiment:
                 self.dataset.make_batch()
 
             with tf.name_scope('cosine_annealing_lr'):
-                total_iters = self.args.ep * self.num_batches_train
+                total_iters = self.total_ep * self.num_batches_train
                 lr_op = self.args.lr * 0.5 * (1.0 + tf.cos(np.pi * (tf.train.get_or_create_global_step() / total_iters)))
 
             self.opt = tf.train.MomentumOptimizer(lr_op, self.args.momentum, use_nesterov=True)
@@ -82,7 +84,7 @@ class Experiment:
 
         # training phase
         start_time_global = time.time()
-        for ep in xrange(self.args.ep):
+        for ep in xrange(self.args.resume_ep, self.args.ep):
 
             sess.run(self.dataset.iterator.initializer, feed_dict={self.dataset.is_training: True})
             for step in xrange(self.num_batches_train):
@@ -147,6 +149,16 @@ class Experiment:
         )
 
         sess = tf.Session(config=config)
-        sess.run(tf.global_variables_initializer())
+
+        if self.args.resume_ep:
+            print ('Resuming model from epoch {}'.format(self.args.resume_ep))
+            variables_to_restore = slim.get_variables_to_restore()
+            init_assign_op, init_feed_dict = slim.assign_from_checkpoint(
+                os.path.join(self.args.model_dir, 'model.ckpt-{}'.format(self.args.resume_ep)),
+                variables_to_restore)
+            sess.run(init_assign_op, init_feed_dict)
+            sess.run(tf.train.get_or_create_global_step().assign(self.args.resume_ep+1))
+        else:
+            sess.run(tf.global_variables_initializer())
 
         return sess

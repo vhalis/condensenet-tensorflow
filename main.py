@@ -54,6 +54,11 @@ if __name__ == '__main__':
         type=str,
         default='./log',
         help='Where to save the models.')
+    parser.add_argument('--resume-ep',
+        type=int,
+        default=0,
+        dest='resume_ep',
+        help='Which epoch to resume a previous run from.')
     args, unparsed = parser.parse_known_args()
     if len(unparsed) != 0:
         raise SystemExit('Unknown argument: {}'.format(unparsed))

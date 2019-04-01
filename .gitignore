@@ -1,0 +1,4 @@
+__pycache__
+log/
+data/cifar-10-data
+.vscode
